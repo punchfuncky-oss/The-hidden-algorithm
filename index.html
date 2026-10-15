@@ -341,6 +341,15 @@
   .foot-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:18px; }
   footer .fine{ font-size:12.5px; color:var(--text-faint); margin-top:24px; }
 
+
+  /* ---------- exit-intent popup ---------- */
+  .exit-pop{ position:fixed; inset:0; z-index:200; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(0,0,0,.72); backdrop-filter:blur(4px); }
+  .exit-pop.show{ display:flex; }
+  .exit-box{ position:relative; max-width:440px; width:100%; text-align:center; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:36px 28px 28px; box-shadow:0 30px 80px -20px rgba(212,175,55,.35); }
+  .exit-box h3{ font-size:24px; margin-bottom:10px; }
+  .exit-box p{ color:var(--text-dim); margin-bottom:22px; }
+  .exit-close{ position:absolute; top:10px; right:14px; background:none; border:0; color:var(--text-faint); font-size:26px; line-height:1; cursor:pointer; }
+  .exit-close:hover{ color:var(--text); }
 </style>
 </head>
 <body>
@@ -645,6 +654,58 @@
   </div>
 </footer>
 
+
+<!-- ===== CODE 1: exit-intent popup (HTML) ===== -->
+<div class="exit-pop" id="exitPop" role="dialog" aria-modal="true" aria-labelledby="exitTitle">
+  <div class="exit-box">
+    <button class="exit-close" id="exitClose" aria-label="Close">&times;</button>
+    <h3 id="exitTitle">Wait — before you go</h3>
+    <p>The Hidden Algorithm is $19.99 with a 14-day, no-questions-asked refund. Grab your copy now and start building your channel today.</p>
+    <a href="https://asermegahed.gumroad.com/l/epjhlq" class="btn btn-primary btn-block" data-gumroad-single-product="true">Unlock the Playbook — $19.99</a>
+  </div>
+</div>
+
+<!-- ===== CODE 1 + CODE 2: scripts ===== -->
+<script>
+(function(){
+  var pop = document.getElementById('exitPop');
+  var closeBtn = document.getElementById('exitClose');
+  var shown = false, purchased = false;
+
+  /* CODE 1: exit-intent popup (mouse leaves the top of the window on desktop,
+     or 40s of inactivity on mobile). Shows once per session. */
+  function seen(){ try{ return sessionStorage.getItem('exitShown')==='1'; }catch(e){ return false; } }
+  function mark(){ try{ sessionStorage.setItem('exitShown','1'); }catch(e){} }
+  function openPop(){
+    if(shown || purchased || seen()) return;
+    shown = true; mark(); pop.classList.add('show');
+  }
+  function closePop(){ pop.classList.remove('show'); }
+  closeBtn.addEventListener('click', closePop);
+  pop.addEventListener('click', function(e){ if(e.target===pop) closePop(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closePop(); });
+  document.addEventListener('mouseout', function(e){
+    if(!e.relatedTarget && e.clientY <= 0) openPop();
+  });
+  var idle;
+  function resetIdle(){ clearTimeout(idle); if('ontouchstart' in window){ idle = setTimeout(openPop, 40000); } }
+  ['touchstart','scroll','click'].forEach(function(ev){ window.addEventListener(ev, resetIdle, {passive:true}); });
+  resetIdle();
+
+  /* CODE 2: browser "Leave site?" confirmation when closing the tab / navigating away.
+     Turned off once Gumroad reports a completed purchase. */
+  window.addEventListener('message', function(e){
+    if(e.origin.indexOf('gumroad.com')===-1) return;
+    var d = e.data, s = (typeof d==='string') ? d : JSON.stringify(d||{});
+    if(/sale|purchase|success/i.test(s)){ purchased = true; }
+  });
+  window.addEventListener('beforeunload', function(e){
+    if(purchased) return;
+    e.preventDefault();
+    e.returnValue = '';
+  });
+})();
+</script>
 <script src="https://gumroad.com/js/gumroad.js"></script>
 </body>
 </html>
